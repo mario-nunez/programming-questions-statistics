@@ -1,6 +1,8 @@
-![My logo](images/my-logo.png)
+<p align="center">
+  <img src="images/my-logo.png">
+</p>
 
-# Programming Stack Overflow statistics
+# Programming questions statistics
 
 The main goal of this project is to access Stack Overflow, extract meaningful information about programming questions, store the data obtained and display meaningful statistics in a user-friendly way.
 

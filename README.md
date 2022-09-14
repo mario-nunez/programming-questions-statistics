@@ -9,7 +9,7 @@ The main goal of this project is to access Stack Overflow, extract meaningful in
 The software allows users to choose a programming language to obtain questions and answers about that topic.
 
 
-## Involved areas
+## Areas involved
 
 - Interactive GUI
 - Web scraping

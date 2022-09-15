@@ -90,14 +90,18 @@ def main():
     """
     # Ask the user to select the search parameters
     lang, prog_lang = select_search_parameters()
+    if lang is None and prog_lang is None:
+        print('\nNo search parameters selected.')
+        return None
     url = URL_TEMPLATE.format(lang=lang, prog_lang=prog_lang)
     data = get_info(url)
     for d in data:
         print(d)
         print('\n')
 
-    print('\nProgram finished.')
+    
     
 
 if __name__ == "__main__":
     main()
+    print('\nProgram finished.')

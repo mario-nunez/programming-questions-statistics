@@ -34,7 +34,7 @@ class Gui(tk.Tk):
         self.title("Search GUI")
         self.geometry("350x350")
         self.resizable(False, False)
-        self.iconbitmap("./images/search_icon.ico")
+        self.iconbitmap("./images/search-icon.ico")
 
         # Options properties
         self.clicked_lang = tk.StringVar()

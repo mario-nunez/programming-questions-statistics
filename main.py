@@ -1,11 +1,14 @@
+from itertools import count
 import re
+from datetime import datetime
 
 import requests
 from bs4 import BeautifulSoup
 
 from gui import Gui
 from constants import (HEADERS, URL_TEMPLATE, QUESTIONS_TAG, DATE_POSTED_TAG,
-                       TITLE_TAG, STATS_TAG, VIEWS_STATS_POSITION, TAGS_TAG)
+                       TITLE_TAG, STATS_TAG, VIEWS_STATS_POSITION, TAGS_TAG,
+                       PAGE_SIZE)
 
 
 def select_search_parameters():
@@ -53,9 +56,10 @@ def get_info(url):
 
     questions_data = []
     try:
+        data_error = False
         for item in questions:
             # get all the elements
-            question_id = int(item.attrs['idx'].split(QUESTIONS_TAG)[1])
+            question_id = int(item.attrs['id'].split(QUESTIONS_TAG)[1])
             title = item.find('h3', {'class' : TITLE_TAG}).find('a').text
             date_posted = item.find('span', {'class' : DATE_POSTED_TAG})
             if date_posted is not None:
@@ -88,8 +92,9 @@ def get_info(url):
         print('\n' + e.__class__.__name__ + ':', e)
         print('\nPlease report to the project owner.' ,
               'The HTML structure of Stack Overflow may have changed.')
+        data_error = True
 
-    return questions_data
+    return questions_data, data_error
 
 def main():
     """
@@ -100,13 +105,28 @@ def main():
     if lang is None and prog_lang is None:
         print('\nNo search parameters selected.')
         return None
-    url = URL_TEMPLATE.format(lang=lang, prog_lang=prog_lang)
-    data = get_info(url)
-    if data is None:
-        return None
-    for d in data:
-        print(d)
-        print('\n')
+
+    all_questions = []
+    end = False
+    page = 1
+    while end is not True:
+        url = URL_TEMPLATE.format(lang=lang, prog_lang=prog_lang,
+                                  page=page, page_size=PAGE_SIZE)
+        print(url)
+        data, data_error = get_info(url)
+
+        if data_error is True:
+            return None
+
+        if len(data) == 0:
+            end = True
+        else:
+            page += 1
+            all_questions.extend(data)
+
+    print('Number of questions stored:', len(all_questions))
+    
+    
 
 
 if __name__ == "__main__":

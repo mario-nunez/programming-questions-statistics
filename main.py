@@ -28,29 +28,47 @@ def select_search_parameters():
 
     return gui.search_lang, gui.search_prog_lang
 
-def get_info(url):
+def get_total_questions(response_html):
     """
-    Collect data from a URL
+    Get the total number of questions to search
 
     Parameters
     ----------
-    url: str
-        URL to get information from
+    response_html: str
+        Data in HTML format
 
     Returns
     -------
-    questions_data: list
-        Data collected and structured
+    questions_num: int
+        Number of questions that match the search parameters selected
     """
-    try:
-        response = requests.get(url, headers=HEADERS)
-    except requests.exceptions.ConnectionError as e:
-        print(e.__doc__, e)
-        print('\nTry again later.')
-        return None
-    soup = BeautifulSoup(response.text, 'html.parser')
+    # Get total number of questions - Interesting to do a progress bar
+    total_questions = response_html.find('div', {'class' : 'fs-body3'})
+    if total_questions is not None:
+        questions_num = int(total_questions.text.split('\n')[1].replace(',', ''))
+    else:
+        questions_num = 0
+    
+    return questions_num
+
+def parse_html(response_html):
+    """
+    Parse data and structure it
+
+    Parameters
+    ----------
+    response_html: str
+        Data in HTML format
+    
+    Returns
+    -------
+    questions_data: list
+        List of dicts containing each question
+    data_error: bool
+        True if correct data, False otherwise.
+    """
     # Extract data, the results are stored in cards inside a div container
-    questions = soup.find_all(
+    questions = response_html.find_all(
         'div', {'id' : re.compile(rf'^{QUESTIONS_TAG}\d+')})
     print('Total questions obtained in the request: ' + str(len(questions)))
 
@@ -96,6 +114,30 @@ def get_info(url):
 
     return questions_data, data_error
 
+def get_info_html(url):
+    """
+    Get data from web page in HTML format
+
+    Parameters
+    ----------
+    url: str
+        URL to get the data
+
+    Returns
+    -------
+    response_html: str
+        Data in HTML format
+    """
+    try:
+        response = requests.get(url, headers=HEADERS)
+        response_html = BeautifulSoup(response.text, 'html.parser')
+    except requests.exceptions.ConnectionError as e:
+        print(e.__doc__, e)
+        print('\nTry again later.')
+        response_html = ''
+    
+    return response_html
+
 def main():
     """
     Main function
@@ -105,30 +147,37 @@ def main():
     if lang is None and prog_lang is None:
         print('\nNo search parameters selected.')
         return None
+    
+    # Get the total number of questions that match the search parameters
+    url = URL_TEMPLATE.format(lang=lang, prog_lang=prog_lang,
+                              page=1, page_size=PAGE_SIZE)
+    response_html = get_info_html(url)
+    questions_num = get_total_questions(response_html)
+    print(f'There are approximately {questions_num} questions to get')
+    # TODO: A progress bar with estimated time
 
-    all_questions = []
-    end = False
     page = 1
+    end = False
+    all_questions = []
     while end is not True:
         url = URL_TEMPLATE.format(lang=lang, prog_lang=prog_lang,
                                   page=page, page_size=PAGE_SIZE)
         print(url)
-        data, data_error = get_info(url)
+        response_html = get_info_html(url)
+        data, data_error = parse_html(response_html)
 
         if data_error is True:
             return None
 
-        if len(data) == 0:
-            end = True
-        else:
+        if data:
             page += 1
             all_questions.extend(data)
+        else:
+            end = True
 
-    print('Number of questions stored:', len(all_questions))
+    print('\nNumber of questions stored:', len(all_questions))
     
     
-
-
 if __name__ == "__main__":
     main()
     print('\nProgram finished.')

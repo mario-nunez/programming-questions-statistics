@@ -22,9 +22,9 @@ class Gui(tk.Tk):
 
         Attributes
         ----------
-        search_lang : str
+        lang : str
             language selected by the user
-        search_prog_lang : str
+        prog_lang : str
             programming language selected by the user
         """
         super().__init__()
@@ -41,8 +41,8 @@ class Gui(tk.Tk):
         self.clicked_prog_lang = tk.StringVar()
 
         # Store options selected
-        self.search_lang = None
-        self.search_prog_lang = None
+        self.lang = None
+        self.prog_lang = None
         
         # Labels
         label_title1 = tk.Label(self, text="Get statistics of",
@@ -98,8 +98,8 @@ class Gui(tk.Tk):
         Get the value of the selected options and close the GUI window
         automatically.
         """
-        self.search_lang = self.LANG_OPTIONS_MAPPING[self.clicked_lang.get()]
-        self.search_prog_lang = self.clicked_prog_lang.get()
+        self.lang = self.LANG_OPTIONS_MAPPING[self.clicked_lang.get()]
+        self.prog_lang = self.clicked_prog_lang.get()
 
         self.destroy()
         

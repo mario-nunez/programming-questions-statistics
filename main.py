@@ -1,6 +1,4 @@
-from itertools import count
 import re
-from datetime import datetime
 
 import requests
 from bs4 import BeautifulSoup
@@ -13,20 +11,19 @@ from constants import (HEADERS, URL_TEMPLATE, QUESTIONS_TAG, DATE_POSTED_TAG,
 
 def select_search_parameters():
     """
-    Let the user choose the language and the programming language of the
-    offers to search using an interactive GUI
+    Let the user choose parameters using an interactive GUI
 
     Returns
     -------
-    search_lang: str
+    lang: str
         language option selected by the user
-    search_prog_lang: str
+    prog_lang: str
         programming language option selected by the user
     """
     gui = Gui()
     gui.mainloop()
 
-    return gui.search_lang, gui.search_prog_lang
+    return gui.lang, gui.prog_lang
 
 def get_total_questions(response_html):
     """
@@ -67,6 +64,9 @@ def parse_html(response_html):
     data_error: bool
         True if correct data, False otherwise.
     """
+    if not response_html:
+        questions_data, data_error = [], False
+        return questions_data, data_error
     # Extract data, the results are stored in cards inside a div container
     questions = response_html.find_all(
         'div', {'id' : re.compile(rf'^{QUESTIONS_TAG}\d+')})
@@ -153,7 +153,7 @@ def main():
                               page=1, page_size=PAGE_SIZE)
     response_html = get_info_html(url)
     questions_num = get_total_questions(response_html)
-    print(f'There are approximately {questions_num} questions to get')
+    print(f'There are approximately {questions_num} questions in total\n')
     # TODO: A progress bar with estimated time
 
     page = 1
@@ -167,7 +167,7 @@ def main():
         data, data_error = parse_html(response_html)
 
         if data_error is True:
-            return None
+            break
 
         if data:
             page += 1

@@ -1,13 +1,33 @@
-from constants import PAGE_SIZE, HEADERS, URL_TEMPLATE
+import requests
+from bs4 import BeautifulSoup
+
+from constants import HEADERS
 
 
-class Scraper:
+class Collector:
     """
-    A class to represent a web scraper that get info from Stack Overflow.
+    A class to represent a web scraper.
     """
+    def scrape(self, url):
+        """
+        Get data from web page in HTML format
 
-    def __init__(self):
-        pass
+        Parameters
+        ----------
+        url: str
+            URL to get the data
 
-    def scrape_stackoverflow(self, lang, prog_lang, page=1, page_size=50):
-        pass
+        Returns
+        -------
+        response_html: str
+            Data in HTML format
+        """
+        try:
+            response = requests.get(url, headers=HEADERS)
+            response_html = BeautifulSoup(response.text, 'html.parser')
+        except requests.exceptions.ConnectionError as e:
+            print(e.__doc__, e)
+            print('\nTry again later.')
+            response_html = ''
+        
+        return response_html

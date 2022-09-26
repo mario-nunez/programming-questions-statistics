@@ -8,6 +8,9 @@ class Collector:
     """
     A class to represent a web scraper.
     """
+    def __init__(self):
+        self.s = requests.Session() 
+
     def scrape(self, url):
         """
         Get data from web page in HTML format
@@ -23,7 +26,7 @@ class Collector:
             Data in HTML format
         """
         try:
-            response = requests.get(url, headers=HEADERS)
+            response = self.s.get(url, headers=HEADERS)
             response_html = BeautifulSoup(response.text, 'html.parser')
         except requests.exceptions.ConnectionError as e:
             print(e.__doc__, e)

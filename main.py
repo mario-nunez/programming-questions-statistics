@@ -1,3 +1,5 @@
+import asyncio
+
 from gui import Gui
 from extract import Collector
 from transform import Parser

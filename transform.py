@@ -1,34 +1,52 @@
 import re
+import threading
+import queue
 
 from constants import (QUESTIONS_TAG, DATE_POSTED_TAG, TITLE_TAG, STATS_TAG,
-                       VIEWS_STATS_POSITION, TAGS_TAG)
-class Parser:
+                       VIEWS_STATS_POSITION, TAGS_TAG, PAGE_TAG)
+class Parser(threading.Thread):
+
+    def __init__(self, thread_name, task_queue):
+        self.thread_name = thread_name
+        self.task_queue = task_queue
+        self.data_parsed = []
+        threading.Thread.__init__(self, name=thread_name)
+
+    def run(self):
+        """
+        Main loop for a Parser. It will keep reading from the queue until it
+        gets some task. If the task is a tuple like (None, None), the Parser
+        stops.
+        """
+        print(f'Parser {self.name} has started')
+
+        while True:
+            try:
+                html_response = self.task_queue.get(True, timeout=0.5)
+            except queue.Empty:
+                continue
+
+            msg = f'Parser {self.name} got data from queue'
+            print(msg)
+
+            # When a None arrives to the queue, means that collectors
+            # have stopped sending items
+            if html_response is None:
+                # This is needed so any other parser threads stop as well
+                self.task_queue.put(None)
+                break
+
+            data_error = self.parse_html_response(html_response)
+            self.task_queue.task_done()
+
+            if data_error is True:
+                self.task_queue.put(None)
+                break
+
+        print(f'Data parsed elements: {len(self.data_parsed)}')
 
     # Data source: Stackoverflow web page
-    def parse_stackoverflow_questions_num(self, html_response):
-        """
-        Get the total number of questions to search
-
-        Parameters
-        ----------
-        html_response: str
-            Data in HTML format
-
-        Returns
-        -------
-        questions_num: int
-            Number of questions that match the search parameters selected
-        """
-        # Get total number of questions - Interesting to do a progress bar
-        total_questions = html_response.find('div', {'class' : 'fs-body3'})
-        if total_questions is not None:
-            questions_num = int(total_questions.text.split('\n')[1].replace(',', ''))
-        else:
-            questions_num = 0
-        
-        return questions_num
-
-    def parse_stackoverflow_data(self, html_response):
+    def parse_html_response(self, html_response):
         """
         Parse data and structure it
 
@@ -39,21 +57,14 @@ class Parser:
         
         Returns
         -------
-        questions_data: list
-            List of dicts containing each question
         data_error: bool
             True if correct data, False otherwise.
         """
-        if not html_response:
-            questions_data, data_error = [], False
-            return questions_data, data_error
-        # Extract data, the results are stored in cards inside a div container
         questions = html_response.find_all(
             'div', {'id' : re.compile(rf'^{QUESTIONS_TAG}\d+')})
 
-        questions_data = []
+        data_error = False
         try:
-            data_error = False
             for item in questions:
                 # get all the elements
                 question_id = int(item.attrs['id'].split(QUESTIONS_TAG)[1])
@@ -65,7 +76,7 @@ class Parser:
                 stats_spans = item.find_all('span', {'class' : STATS_TAG})
                 stats = []
                 for index, stat in enumerate(stats_spans):
-                    # Special location to get the exact amount of views
+                    # Get the exact amount of views from a specific location
                     if index == VIEWS_STATS_POSITION:
                         stats.append(int(stat.parent['title'].split(' ')[0]))
                     else:
@@ -84,11 +95,59 @@ class Parser:
                     'views': stats[2],
                     'tags': tags
                 }
-                questions_data.append(q)
+                self.data_parsed.append(q)
         except (KeyError, IndexError, AttributeError) as e:
             print('\n' + e.__class__.__name__ + ':', e)
             print('\nPlease report to the project owner.' ,
                 'The HTML structure of Stack Overflow may have changed.')
             data_error = True
 
-        return questions_data, data_error
+        return data_error
+
+    
+    def parse_questions_num(html_response):
+        """
+        Get the total number of questions to search
+
+        Parameters
+        ----------
+        html_response: str
+            Data in HTML format
+
+        Returns
+        -------
+        questions_num: int
+            Number of questions that match the search parameters selected
+        """
+        # Get total number of questions - Interesting to do a progress bar
+        total_questions = html_response.find('div', {'class' : 'fs-body3'})
+        if total_questions is not None:
+            questions_num = int(
+                total_questions.text.split('\n')[1].replace(',', '')
+            )
+        else:
+            questions_num = 0
+        
+        return questions_num
+
+    def parse_pages_num(html_response):
+        """
+        Get the total number of pages to search through
+
+        Parameters
+        ----------
+        html_response: str
+            Data in HTML format
+
+        Returns
+        -------
+        pages_num: int
+            Number of pages with data that match the search parameters selected
+        """
+        total_pages = html_response.find_all('a', {'class' : PAGE_TAG})
+        if total_pages is not None:
+            pages_num = int(total_pages[-2].text)
+        else:
+            pages_num = 0
+        
+        return pages_num

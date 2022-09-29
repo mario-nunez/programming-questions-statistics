@@ -1,7 +1,12 @@
+import logging
+
 import requests
 from bs4 import BeautifulSoup
 
-from constants import HEADERS
+from settings.constants import HEADERS
+
+
+logger = logging.getLogger(__name__)
 
 
 class Collector:

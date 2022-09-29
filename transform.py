@@ -1,9 +1,15 @@
 import re
-import threading
 import queue
+import logging
+import threading
 
-from constants import (QUESTIONS_TAG, DATE_POSTED_TAG, TITLE_TAG, STATS_TAG,
+from settings.constants import (QUESTIONS_TAG, DATE_POSTED_TAG, TITLE_TAG, STATS_TAG,
                        VIEWS_STATS_POSITION, TAGS_TAG, PAGE_TAG)
+
+
+logger = logging.getLogger(__name__)
+
+
 class Parser(threading.Thread):
 
     def __init__(self, thread_name, task_queue):
@@ -19,6 +25,7 @@ class Parser(threading.Thread):
         stops.
         """
         print(f'Parser {self.name} has started')
+        logger.info(f'Parser {self.name} has started')
 
         while True:
             try:
@@ -145,9 +152,9 @@ class Parser(threading.Thread):
             Number of pages with data that match the search parameters selected
         """
         total_pages = html_response.find_all('a', {'class' : PAGE_TAG})
-        if total_pages is not None:
+        if total_pages:
             pages_num = int(total_pages[-2].text)
         else:
-            pages_num = 0
+            pages_num = 1
         
         return pages_num

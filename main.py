@@ -1,10 +1,19 @@
-import asyncio
 import queue
+import asyncio
+import logging
+import logging.config
+from time import perf_counter, process_time
 
 from gui import Gui
-from extract import Collector
 from transform import Parser
-from constants import URL_TEMPLATE, WORKERS
+from extract import Collector
+from settings.logging_config import LOG_CONFIG_DICT
+from settings.constants import URL_TEMPLATE, WORKERS
+
+
+# Configure the logging
+logging.config.dictConfig(LOG_CONFIG_DICT)
+logger = logging.getLogger(__name__)
 
 
 class MainClass:
@@ -46,7 +55,9 @@ class MainClass:
         """
         Creates and starts all parsers threads
         """
-        self.parsers = [Parser(f'Parser-{i}', self.task_queue) for i in range(worker_num)]
+        self.parsers = [
+            Parser(f'Parser-{i}', self.task_queue) for i in range(1, worker_num+1)
+        ]
 
         for t in self.parsers:
             t.start()
@@ -55,9 +66,13 @@ class MainClass:
         """
         Main function
         """
+        logger.info(f'Program started...')
         # Tools
         scraper = Collector()
         self._create_parser_workers(WORKERS)
+
+
+ 
 
         # Ask the user to select the search parameters
         lang, prog_lang = self._select_search_parameters()
@@ -76,6 +91,9 @@ class MainClass:
         print(f'Math: {pages_num}x50={pages_num*50} aprox -> {questions_num}\n')
 
 
+        start_time = perf_counter()
+        cpu_start_time = process_time()
+
         for i in range(1, pages_num+1):
             url = URL_TEMPLATE.format(lang=lang, prog_lang=prog_lang, page=i)
             print(url)
@@ -85,8 +103,14 @@ class MainClass:
 
         self.stop()
         print(f'There are approximately {questions_num} questions in total\n')
-        
-    
+
+        stop_time= perf_counter()
+        cpu_stop_time = process_time()
+
+        print(f'Wall time: {stop_time - start_time} seconds')
+        print(f'CPU time: {cpu_stop_time - cpu_start_time} seconds')
+
+
 if __name__ == "__main__":
     e = MainClass()
     e.main_loop()

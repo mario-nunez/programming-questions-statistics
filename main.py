@@ -26,14 +26,16 @@ class MainClass:
         """
         Do cleanup actions before stopping the program
         """
-        print('Stopping program...')
+        logger.info('Stopping program...')
 
         self.task_queue.put(None) 
         for p in self.parsers:
             p.join()
 
-        msg = f'Task queue length: {self.task_queue.qsize()} - last item: {self.task_queue.get()}'
-        print(msg)
+        logger.info(
+            f'Task queue length: {self.task_queue.qsize()} -> '
+            f'last item: {self.task_queue.get()}'
+        )
 
     def _select_search_parameters(self):
         """
@@ -46,8 +48,10 @@ class MainClass:
         prog_lang: str
             programming language option selected by the user
         """
+        logger.info(f'Opening GUI...')
         gui = Gui()
         gui.mainloop()
+        logger.info(f'GUI closed')
 
         return gui.lang, gui.prog_lang
 
@@ -62,56 +66,49 @@ class MainClass:
         for t in self.parsers:
             t.start()
 
-    def main_loop(self):
+    def main(self):
         """
         Main function
         """
-        logger.info(f'Program started...')
+        logger.info(f'Starting program...')
         # Tools
         scraper = Collector()
         self._create_parser_workers(WORKERS)
 
-
- 
-
         # Ask the user to select the search parameters
         lang, prog_lang = self._select_search_parameters()
         if lang is None and prog_lang is None:
-            print('\nNo search parameters selected.')
+            logger.warning('No search parameters selected')
+            self.stop()
             return None
     
-        # Get the total number of questions that match the search parameters
+        # Get the number of pages that match the search parameters
         url = URL_TEMPLATE.format(lang=lang, prog_lang=prog_lang, page=1)
         html_response = scraper.scrape(url)
-        questions_num = Parser.parse_questions_num(html_response)
-        # TODO: A progress bar with estimated time
-
         pages_num = Parser.parse_pages_num(html_response)
-        print(f'There are approximately {pages_num} pages in total\n')
-        print(f'Math: {pages_num}x50={pages_num*50} aprox -> {questions_num}\n')
-
+        logger.info(f'There are {pages_num} pages in total')
+        # TODO: A progress bar with estimated time
 
         start_time = perf_counter()
         cpu_start_time = process_time()
 
         for i in range(1, pages_num+1):
             url = URL_TEMPLATE.format(lang=lang, prog_lang=prog_lang, page=i)
-            print(url)
+            logger.info(url)
             html_response = scraper.scrape(url)
             if not html_response: break
             self.task_queue.put(html_response)
 
         self.stop()
-        print(f'There are approximately {questions_num} questions in total\n')
 
-        stop_time= perf_counter()
+        stop_time = perf_counter()
         cpu_stop_time = process_time()
 
-        print(f'Wall time: {stop_time - start_time} seconds')
-        print(f'CPU time: {cpu_stop_time - cpu_start_time} seconds')
+        logger.info(f'Wall time: {stop_time - start_time} seconds')
+        logger.info(f'CPU time: {cpu_stop_time - cpu_start_time} seconds')
+        logger.info('Program finished.')
 
 
 if __name__ == "__main__":
     e = MainClass()
-    e.main_loop()
-    print('\nProgram finished.')
+    e.main()

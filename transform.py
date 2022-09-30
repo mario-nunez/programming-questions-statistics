@@ -3,8 +3,10 @@ import queue
 import logging
 import threading
 
-from settings.constants import (QUESTIONS_TAG, DATE_POSTED_TAG, TITLE_TAG, STATS_TAG,
-                       VIEWS_STATS_POSITION, TAGS_TAG, PAGE_TAG)
+from settings.constants import (
+    QUESTIONS_TAG, DATE_POSTED_TAG, TITLE_TAG, STATS_TAG, VIEWS_STATS_POSITION,
+    TAGS_TAG, PAGE_TAG
+)
 
 
 logger = logging.getLogger(__name__)
@@ -20,12 +22,10 @@ class Parser(threading.Thread):
 
     def run(self):
         """
-        Main loop for a Parser. It will keep reading from the queue until it
-        gets some task. If the task is a tuple like (None, None), the Parser
-        stops.
+        Main loop for a Parser. It will keep reading from the queue
+        until it gets some task. If the task is None the Parser stops.
         """
-        print(f'Parser {self.name} has started')
-        logger.info(f'Parser {self.name} has started')
+        logger.info(f'{self.name} started')
 
         while True:
             try:
@@ -33,8 +33,7 @@ class Parser(threading.Thread):
             except queue.Empty:
                 continue
 
-            msg = f'Parser {self.name} got data from queue'
-            print(msg)
+            logger.info(f'{self.name} got data from queue')
 
             # When a None arrives to the queue, means that collectors
             # have stopped sending items
@@ -49,8 +48,10 @@ class Parser(threading.Thread):
             if data_error is True:
                 self.task_queue.put(None)
                 break
+            
+        logger.info(f'{self.name} ended')
 
-        print(f'Data parsed elements: {len(self.data_parsed)}')
+        logger.info(f'Summary: {len(self.data_parsed)} elements processed')
 
     # Data source: Stackoverflow web page
     def parse_html_response(self, html_response):
@@ -104,38 +105,14 @@ class Parser(threading.Thread):
                 }
                 self.data_parsed.append(q)
         except (KeyError, IndexError, AttributeError) as e:
-            print('\n' + e.__class__.__name__ + ':', e)
-            print('\nPlease report to the project owner.' ,
-                'The HTML structure of Stack Overflow may have changed.')
+            logger.error(e.__class__.__name__ + ':', e)
+            logger.warning(
+                'Please report to the project owner.'
+                'The HTML structure of Stack Overflow may have changed.'
+            )
             data_error = True
 
         return data_error
-
-    
-    def parse_questions_num(html_response):
-        """
-        Get the total number of questions to search
-
-        Parameters
-        ----------
-        html_response: str
-            Data in HTML format
-
-        Returns
-        -------
-        questions_num: int
-            Number of questions that match the search parameters selected
-        """
-        # Get total number of questions - Interesting to do a progress bar
-        total_questions = html_response.find('div', {'class' : 'fs-body3'})
-        if total_questions is not None:
-            questions_num = int(
-                total_questions.text.split('\n')[1].replace(',', '')
-            )
-        else:
-            questions_num = 0
-        
-        return questions_num
 
     def parse_pages_num(html_response):
         """

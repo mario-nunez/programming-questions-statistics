@@ -31,11 +31,10 @@ class Collector:
             Data in HTML format
         """
         try:
-            response = self.s.get(url, headers=HEADERS)
+            response = requests.get(url, headers=HEADERS)
             response_html = BeautifulSoup(response.text, 'html.parser')
         except requests.exceptions.ConnectionError as e:
-            print(e.__doc__, e)
-            print('\nTry again later.')
+            logger.error(f'{e.__doc__}, {e}')
             response_html = ''
         
         return response_html

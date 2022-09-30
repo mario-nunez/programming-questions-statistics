@@ -5,7 +5,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LOG_FOLDER = os.path.join(BASE_DIR, "logs")
 
 # Configuration settings
-WORKERS = 2
+WORKERS = 1
 
 # Info associated with the request to Stack Overflow
 HEADERS = {"User-Agent" : "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.5112.79 Safari/537.36"}

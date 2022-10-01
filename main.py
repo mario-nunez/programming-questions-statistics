@@ -111,4 +111,8 @@ class MainClass:
 
 if __name__ == "__main__":
     e = MainClass()
-    e.main()
+    try:
+        e.main()
+    except KeyboardInterrupt:
+        logger.warning('Interruption occurred')
+        e.stop()

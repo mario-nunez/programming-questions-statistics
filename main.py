@@ -1,8 +1,12 @@
-import queue
 import asyncio
 import logging
 import logging.config
+import platform
+import queue
 from time import perf_counter, process_time
+
+import aiohttp
+from bs4 import BeautifulSoup
 
 from gui import Gui
 from transform import Parser
@@ -11,7 +15,7 @@ from settings.logging_config import LOG_CONFIG_DICT
 from settings.constants import URL_TEMPLATE, WORKERS
 
 
-# Configure the logging
+# Logging configuration
 logging.config.dictConfig(LOG_CONFIG_DICT)
 logger = logging.getLogger(__name__)
 
@@ -21,6 +25,7 @@ class MainClass:
     def __init__(self):
         self.task_queue = queue.Queue()
         self.parsers = []
+        self.results = []
 
     def stop(self):
         """
@@ -66,10 +71,26 @@ class MainClass:
         for t in self.parsers:
             t.start()
 
+    async def fetch(self, session, url):
+        async with session.get(url) as resp:
+            logger.info(url)
+            assert resp.status == 200
+            return await resp.text() 
+
+    async def get_info(self, urls):
+        async with aiohttp.ClientSession() as session:
+            for url in urls:
+                resp = await self.fetch(session, url)
+                self.task_queue.put(BeautifulSoup(resp, 'html.parser'))
+
     def main(self):
         """
         Main function
         """
+
+        # TODO: Reduce docstrings
+        # TODO: Refactor code with the asyncio approach
+
         logger.info(f'Starting program...')
         # Tools
         scraper = Collector()
@@ -81,23 +102,27 @@ class MainClass:
             logger.warning('No search parameters selected')
             self.stop()
             return None
-    
+
         # Get the number of pages that match the search parameters
         url = URL_TEMPLATE.format(lang=lang, prog_lang=prog_lang, page=1)
         html_response = scraper.scrape(url)
         pages_num = Parser.parse_pages_num(html_response)
         logger.info(f'There are {pages_num} pages in total')
-        # TODO: A progress bar with estimated time
-
+        # TODO: A progress bar with estimated time or percentaje of requests done
+        
         start_time = perf_counter()
         cpu_start_time = process_time()
 
+        # TODO: Create a function
+        urls = []
         for i in range(1, pages_num+1):
-            url = URL_TEMPLATE.format(lang=lang, prog_lang=prog_lang, page=i)
-            logger.info(url)
-            html_response = scraper.scrape(url)
-            if not html_response: break
-            self.task_queue.put(html_response)
+            urls.append(URL_TEMPLATE.format(lang=lang, prog_lang=prog_lang, page=i))
+
+        logger.info('Number of URLs: ' +  str(len(urls)))
+
+        if platform.system()=='Windows':
+            asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+        asyncio.run(self.get_info(urls))
 
         self.stop()
 

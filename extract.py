@@ -1,7 +1,6 @@
 import logging
 
 import requests
-from bs4 import BeautifulSoup
 
 from settings.constants import HEADERS
 
@@ -10,11 +9,6 @@ logger = logging.getLogger(__name__)
 
 
 class Collector:
-    """
-    A class to represent a web scraper.
-    """
-    def __init__(self):
-        self.s = requests.Session() 
 
     def scrape(self, url):
         """
@@ -27,14 +21,15 @@ class Collector:
 
         Returns
         -------
-        response_html: str
-            Data in HTML format
+        html_resp: bs4.BeautifulSoup
+            HTML res
         """
         try:
-            response = requests.get(url, headers=HEADERS)
-            response_html = BeautifulSoup(response.text, 'html.parser')
+            with requests.Session() as s:
+                resp = s.get(url, headers=HEADERS)
+                resp = resp.text
         except requests.exceptions.ConnectionError as e:
             logger.error(f'{e.__doc__}, {e}')
-            response_html = ''
+            resp = ''
         
-        return response_html
+        return resp

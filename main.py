@@ -12,7 +12,7 @@ from gui import Gui
 from transform import Parser
 from extract import Collector
 from settings.logging_config import LOG_CONFIG_DICT
-from settings.constants import URL_TEMPLATE, WORKERS
+from settings.constants import URL_TEMPLATE, WORKERS, STATUS_OK_CODE
 
 
 # Logging configuration
@@ -25,7 +25,8 @@ class MainClass:
     def __init__(self):
         self.task_queue = queue.Queue()
         self.parsers = []
-        self.results = []
+        self.scraper = Collector()
+        self._create_parser_workers(WORKERS)
 
     def stop(self):
         """
@@ -42,7 +43,58 @@ class MainClass:
             f'last item: {self.task_queue.get()}'
         )
 
-    def _select_search_parameters(self):
+    def _create_parser_workers(self, worker_num):
+        """
+        Create and start all parsers threads
+        """
+        self.parsers = [
+            Parser(f'Parser-{i}', self.task_queue) for i in range(1, worker_num+1)
+        ]
+
+        for t in self.parsers:
+            t.start()
+
+    async def fetch(self, session, url):
+        """
+        Async function that makes a request and returns its html response.
+        """
+        async with session.get(url) as resp:
+            logger.info(url)
+            assert resp.status == STATUS_OK_CODE
+            return await resp.text() 
+
+    async def get_urls_info(self, urls):
+        """
+        Async function that gets the information of certain urls and 
+        insert them in the parser queue.
+        """
+        async with aiohttp.ClientSession() as session:
+            for url in urls:
+                html_resp = await self.fetch(session, url)
+                self.task_queue.put(BeautifulSoup(html_resp, 'html.parser'))
+
+    def generate_urls(self, pages_num, lang, prog_lang):
+        """
+        Create all the URLs that will be requested
+        """
+        urls = []
+        for i in range(1, pages_num+1):
+            urls.append(URL_TEMPLATE.format(lang=lang, prog_lang=prog_lang, page=i))
+
+        return urls
+    
+    def get_pages_num(self, lang, prog_lang):
+        """
+        Get the number of pages that match the search parameters
+        """
+        url = URL_TEMPLATE.format(lang=lang, prog_lang=prog_lang, page=1)
+        resp = self.scraper.scrape(url)
+        pages_num = Parser.parse_pages_num(BeautifulSoup(resp, 'html.parser'))
+        logger.info(f'{pages_num} pages to request in total')
+
+        return pages_num
+    
+    def select_search_parameters(self):
         """
         Let the user choose parameters using an interactive GUI
 
@@ -60,69 +112,31 @@ class MainClass:
 
         return gui.lang, gui.prog_lang
 
-    def _create_parser_workers(self, worker_num):
-        """
-        Creates and starts all parsers threads
-        """
-        self.parsers = [
-            Parser(f'Parser-{i}', self.task_queue) for i in range(1, worker_num+1)
-        ]
-
-        for t in self.parsers:
-            t.start()
-
-    async def fetch(self, session, url):
-        async with session.get(url) as resp:
-            logger.info(url)
-            assert resp.status == 200
-            return await resp.text() 
-
-    async def get_info(self, urls):
-        async with aiohttp.ClientSession() as session:
-            for url in urls:
-                resp = await self.fetch(session, url)
-                self.task_queue.put(BeautifulSoup(resp, 'html.parser'))
-
     def main(self):
         """
         Main function
         """
-
-        # TODO: Reduce docstrings
-        # TODO: Refactor code with the asyncio approach
-
         logger.info(f'Starting program...')
-        # Tools
-        scraper = Collector()
-        self._create_parser_workers(WORKERS)
 
         # Ask the user to select the search parameters
-        lang, prog_lang = self._select_search_parameters()
+        lang, prog_lang = self.select_search_parameters()
         if lang is None and prog_lang is None:
             logger.warning('No search parameters selected')
             self.stop()
             return None
 
-        # Get the number of pages that match the search parameters
-        url = URL_TEMPLATE.format(lang=lang, prog_lang=prog_lang, page=1)
-        html_response = scraper.scrape(url)
-        pages_num = Parser.parse_pages_num(html_response)
-        logger.info(f'There are {pages_num} pages in total')
+        pages_num = self.get_pages_num(lang, prog_lang)
         # TODO: A progress bar with estimated time or percentaje of requests done
         
         start_time = perf_counter()
         cpu_start_time = process_time()
 
-        # TODO: Create a function
-        urls = []
-        for i in range(1, pages_num+1):
-            urls.append(URL_TEMPLATE.format(lang=lang, prog_lang=prog_lang, page=i))
-
-        logger.info('Number of URLs: ' +  str(len(urls)))
+        urls = self.generate_urls(pages_num, lang, prog_lang)
+        logger.info('Number of URLs to request for: ' +  str(len(urls)))
 
         if platform.system()=='Windows':
             asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-        asyncio.run(self.get_info(urls))
+        asyncio.run(self.get_urls_info(urls))
 
         self.stop()
 
@@ -135,9 +149,9 @@ class MainClass:
 
 
 if __name__ == "__main__":
-    e = MainClass()
+    s = MainClass()
     try:
-        e.main()
+        s.main()
     except KeyboardInterrupt:
-        logger.warning('Interruption occurred')
-        e.stop()
+        logger.warning('Ctrl-c was pressed. Keyboard interruption ocurred.')
+        s.stop()

@@ -60,7 +60,7 @@ class Parser(threading.Thread):
 
         Parameters
         ----------
-        html_response: str
+        html_response: bs4.BeautifulSoup
             Data in HTML format
         
         Returns
@@ -120,7 +120,7 @@ class Parser(threading.Thread):
 
         Parameters
         ----------
-        html_response: str
+        html_response: bs4.BeautifulSoup
             Data in HTML format
 
         Returns

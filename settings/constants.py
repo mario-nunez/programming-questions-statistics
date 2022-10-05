@@ -9,7 +9,9 @@ WORKERS = 1
 
 # Info associated with the request to Stack Overflow
 HEADERS = {"User-Agent" : "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.5112.79 Safari/537.36"}
-URL_TEMPLATE = "https://{lang}stackoverflow.com/questions/tagged/{prog_lang}?sort=MostVotes&page={page}&pagesize=50"
+URL_TEMPLATE1 = "https://{lang}stackoverflow.com/questions/tagged/{prog_lang}?sort=MostVotes&pagesize=50&page={page}"
+URL_TEMPLATE = "https://{lang}stackoverflow.com/questions/tagged/{prog_lang}?sort=MostVotes&pagesize=50"
+PAGE_TEMPLATE = "&page={page}"
 STATUS_OK_CODE = 200
 
 # Info associated with Stack Overflow HTML structure

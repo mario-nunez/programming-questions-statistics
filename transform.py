@@ -33,7 +33,7 @@ class Parser(threading.Thread):
             except queue.Empty:
                 continue
 
-            logger.info(f'{self.name} got data from queue')
+            logger.debug(f'{self.name} got data from queue')
 
             # When a None arrives to the queue, means that collectors
             # have stopped sending items

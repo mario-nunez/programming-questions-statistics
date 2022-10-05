@@ -12,7 +12,9 @@ from gui import Gui
 from transform import Parser
 from extract import Collector
 from settings.logging_config import LOG_CONFIG_DICT
-from settings.constants import URL_TEMPLATE, WORKERS, STATUS_OK_CODE
+from settings.constants import (
+    URL_TEMPLATE, PAGE_TEMPLATE, WORKERS, STATUS_OK_CODE
+)
 
 
 # Logging configuration
@@ -59,38 +61,33 @@ class MainClass:
         Async function that makes a request and returns its html response.
         """
         async with session.get(url) as resp:
-            logger.info(url)
             assert resp.status == STATUS_OK_CODE
             return await resp.text() 
 
-    async def get_urls_info(self, urls):
+    async def get_pages_info(self, base_url, pages_num):
         """
         Async function that gets the information of certain urls and 
         insert them in the parser queue.
         """
+        print(f'Requests made of the {pages_num}:')
         async with aiohttp.ClientSession() as session:
-            for url in urls:
+            for i in range(1, pages_num+1):
+                url = base_url + PAGE_TEMPLATE.format(page=i)
                 html_resp = await self.fetch(session, url)
+                print(f'{i},', end="", flush=True)
                 self.task_queue.put(BeautifulSoup(html_resp, 'html.parser'))
 
-    def generate_urls(self, pages_num, lang, prog_lang):
-        """
-        Create all the URLs that will be requested
-        """
-        urls = []
-        for i in range(1, pages_num+1):
-            urls.append(URL_TEMPLATE.format(lang=lang, prog_lang=prog_lang, page=i))
-
-        return urls
-    
-    def get_pages_num(self, lang, prog_lang):
+    def get_pages_num(self, base_url):
         """
         Get the number of pages that match the search parameters
         """
-        url = URL_TEMPLATE.format(lang=lang, prog_lang=prog_lang, page=1)
+        url = base_url + PAGE_TEMPLATE.format(page=1)
         resp = self.scraper.scrape(url)
-        pages_num = Parser.parse_pages_num(BeautifulSoup(resp, 'html.parser'))
-        logger.info(f'{pages_num} pages to request in total')
+        if resp:
+            pages_num = Parser.parse_pages_num(BeautifulSoup(resp, 'html.parser'))
+            logger.info(f'{pages_num} pages to request in total')
+        else:
+            pages_num = 0
 
         return pages_num
     
@@ -125,18 +122,20 @@ class MainClass:
             self.stop()
             return None
 
-        pages_num = self.get_pages_num(lang, prog_lang)
-        # TODO: A progress bar with estimated time or percentaje of requests done
-        
+        base_url = URL_TEMPLATE.format(lang=lang, prog_lang=prog_lang)
+
+        pages_num = self.get_pages_num(base_url)
+        if pages_num == 0:
+            logger.warning('No pages to request')
+            self.stop()
+            return None
+
         start_time = perf_counter()
         cpu_start_time = process_time()
 
-        urls = self.generate_urls(pages_num, lang, prog_lang)
-        logger.info('Number of URLs to request for: ' +  str(len(urls)))
-
         if platform.system()=='Windows':
             asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-        asyncio.run(self.get_urls_info(urls))
+        asyncio.run(self.get_pages_info(base_url, pages_num))
 
         self.stop()
 

@@ -13,7 +13,7 @@ from transform import Parser
 from extract import Collector
 from settings.logging_config import LOG_CONFIG_DICT
 from settings.constants import (
-    URL_TEMPLATE, PAGE_TEMPLATE, WORKERS, STATUS_OK_CODE
+    URL_TEMPLATE, PAGE_TEMPLATE, WORKERS, STATUS_CODE_OK, REQUEST_LIMIT
 )
 
 
@@ -61,8 +61,12 @@ class MainClass:
         Async function that makes a request and returns its html response.
         """
         async with session.get(url) as resp:
-            assert resp.status == STATUS_OK_CODE
-            return await resp.text() 
+            if resp.status != STATUS_CODE_OK:
+                logger.error(
+                    f'Error in response with status code: {resp.status}. '
+                    f'{resp.reason}')
+                return None
+            return await resp.text()
 
     async def get_pages_info(self, base_url, pages_num):
         """
@@ -74,6 +78,8 @@ class MainClass:
             for i in range(1, pages_num+1):
                 url = base_url + PAGE_TEMPLATE.format(page=i)
                 html_resp = await self.fetch(session, url)
+                if html_resp is None:
+                    return None
                 print(f'{i},', end="", flush=True)
                 self.task_queue.put(BeautifulSoup(html_resp, 'html.parser'))
 
@@ -129,6 +135,9 @@ class MainClass:
             logger.warning('No pages to request')
             self.stop()
             return None
+        elif pages_num > REQUEST_LIMIT:
+            logger.info(f'{pages_num} pages limited to {REQUEST_LIMIT} pages')
+            pages_num = REQUEST_LIMIT
 
         start_time = perf_counter()
         cpu_start_time = process_time()

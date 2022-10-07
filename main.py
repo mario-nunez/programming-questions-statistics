@@ -7,6 +7,9 @@ from time import perf_counter, process_time
 
 import aiohttp
 from bs4 import BeautifulSoup
+import matplotlib.pyplot as plt
+import pandas as pd
+import seaborn as sns
 
 from gui import Gui
 from transform import Parser
@@ -26,6 +29,7 @@ class MainClass:
 
     def __init__(self):
         self.task_queue = queue.Queue()
+        self.data_parsed_df = None
         self.parsers = []
         self.scraper = Collector()
         self._create_parser_workers(WORKERS)
@@ -39,6 +43,8 @@ class MainClass:
         self.task_queue.put(None) 
         for p in self.parsers:
             p.join()
+            # Store results in pandas dataframe in main class
+            self.data_parsed_df = pd.DataFrame.from_records(p.data_parsed)
 
         logger.info(
             f'Task queue length: {self.task_queue.qsize()} -> '
@@ -153,6 +159,11 @@ class MainClass:
 
         logger.info(f'Wall time: {stop_time - start_time} seconds')
         logger.info(f'CPU time: {cpu_stop_time - cpu_start_time} seconds')
+
+        # Visualise results with seaborn
+        ax = sns.barplot(x="question_id", y="views", data=self.data_parsed_df)
+        plt.show()
+
         logger.info('Program finished.')
 
 

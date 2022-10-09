@@ -161,7 +161,52 @@ class MainClass:
         logger.info(f'CPU time: {cpu_stop_time - cpu_start_time} seconds')
 
         # Visualise results with seaborn
-        ax = sns.barplot(x="question_id", y="views", data=self.data_parsed_df)
+
+        sns.set(rc={"figure.figsize":(13, 9)})
+        
+        #set seaborn plotting aesthetics as default
+        
+
+        #define plotting region (2 rows, 2 columns)
+        fig, axes = plt.subplots(2, 2)
+        fig.suptitle('Stackoverflow visualizations')
+
+        #create boxplot in each subplot
+
+        # Top 5 questions with most views
+        data_most_views = self.data_parsed_df\
+            .sort_values("views", ascending=False).head(5)
+        sns.barplot(
+            x="question_id", y="views", data=data_most_views, orient="v",
+            order=data_most_views.sort_values("views", ascending=False).question_id,
+            ax=axes[0,0]
+            ).set(title="Top 5 questions with most views")
+
+        # Top 5 questions with most votes
+        data_most_votes = self.data_parsed_df\
+            .sort_values("votes", ascending=False).head(5)
+        sns.barplot(
+            x="question_id", y="votes", data=data_most_votes, orient="v",
+            order=data_most_votes.sort_values("votes", ascending=False).question_id,
+            ax=axes[0,1]).set(title="Top 5 questions with most votes")
+
+        # Top 5 questions with most views
+        data_most_views = self.data_parsed_df\
+            .sort_values("views", ascending=False).head(5)
+        sns.barplot(
+            x="question_id", y="views", data=data_most_views, orient="v",
+            order=data_most_views.sort_values("views", ascending=False).question_id,
+            ax=axes[1,0]
+            ).set(title="Top 5 questions with most views")
+
+        # Top 5 questions with most votes
+        data_most_votes = self.data_parsed_df\
+            .sort_values("votes", ascending=False).head(5)
+        sns.barplot(
+            x="question_id", y="votes", data=data_most_votes, orient="v",
+            order=data_most_votes.sort_values("votes", ascending=False).question_id,
+            ax=axes[1,1]).set(title="Top 5 questions with most votes")
+        
         plt.show()
 
         logger.info('Program finished.')

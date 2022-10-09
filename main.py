@@ -7,13 +7,16 @@ from time import perf_counter, process_time
 
 import aiohttp
 from bs4 import BeautifulSoup
+import matplotlib.pyplot as plt
+import pandas as pd
+import seaborn as sns
 
 from gui import Gui
 from transform import Parser
 from extract import Collector
 from settings.logging_config import LOG_CONFIG_DICT
 from settings.constants import (
-    URL_TEMPLATE, PAGE_TEMPLATE, WORKERS, STATUS_OK_CODE
+    URL_TEMPLATE, PAGE_TEMPLATE, WORKERS, STATUS_CODE_OK, REQUEST_LIMIT
 )
 
 
@@ -26,6 +29,7 @@ class MainClass:
 
     def __init__(self):
         self.task_queue = queue.Queue()
+        self.data_parsed_df = None
         self.parsers = []
         self.scraper = Collector()
         self._create_parser_workers(WORKERS)
@@ -39,6 +43,8 @@ class MainClass:
         self.task_queue.put(None) 
         for p in self.parsers:
             p.join()
+            # Store results in pandas dataframe in main class
+            self.data_parsed_df = pd.DataFrame.from_records(p.data_parsed)
 
         logger.info(
             f'Task queue length: {self.task_queue.qsize()} -> '
@@ -61,8 +67,12 @@ class MainClass:
         Async function that makes a request and returns its html response.
         """
         async with session.get(url) as resp:
-            assert resp.status == STATUS_OK_CODE
-            return await resp.text() 
+            if resp.status != STATUS_CODE_OK:
+                logger.error(
+                    f'Error in response with status code: {resp.status}. '
+                    f'{resp.reason}')
+                return None
+            return await resp.text()
 
     async def get_pages_info(self, base_url, pages_num):
         """
@@ -74,6 +84,8 @@ class MainClass:
             for i in range(1, pages_num+1):
                 url = base_url + PAGE_TEMPLATE.format(page=i)
                 html_resp = await self.fetch(session, url)
+                if html_resp is None:
+                    return None
                 print(f'{i},', end="", flush=True)
                 self.task_queue.put(BeautifulSoup(html_resp, 'html.parser'))
 
@@ -129,6 +141,9 @@ class MainClass:
             logger.warning('No pages to request')
             self.stop()
             return None
+        elif pages_num > REQUEST_LIMIT:
+            logger.info(f'{pages_num} pages limited to {REQUEST_LIMIT} pages')
+            pages_num = REQUEST_LIMIT
 
         start_time = perf_counter()
         cpu_start_time = process_time()
@@ -144,6 +159,56 @@ class MainClass:
 
         logger.info(f'Wall time: {stop_time - start_time} seconds')
         logger.info(f'CPU time: {cpu_stop_time - cpu_start_time} seconds')
+
+        # Visualise results with seaborn
+
+        sns.set(rc={"figure.figsize":(13, 9)})
+        
+        #set seaborn plotting aesthetics as default
+        
+
+        #define plotting region (2 rows, 2 columns)
+        fig, axes = plt.subplots(2, 2)
+        fig.suptitle('Stackoverflow visualizations')
+
+        #create boxplot in each subplot
+
+        # Top 5 questions with most views
+        data_most_views = self.data_parsed_df\
+            .sort_values("views", ascending=False).head(5)
+        sns.barplot(
+            x="question_id", y="views", data=data_most_views, orient="v",
+            order=data_most_views.sort_values("views", ascending=False).question_id,
+            ax=axes[0,0]
+            ).set(title="Top 5 questions with most views")
+
+        # Top 5 questions with most votes
+        data_most_votes = self.data_parsed_df\
+            .sort_values("votes", ascending=False).head(5)
+        sns.barplot(
+            x="question_id", y="votes", data=data_most_votes, orient="v",
+            order=data_most_votes.sort_values("votes", ascending=False).question_id,
+            ax=axes[0,1]).set(title="Top 5 questions with most votes")
+
+        # Top 5 questions with most views
+        data_most_views = self.data_parsed_df\
+            .sort_values("views", ascending=False).head(5)
+        sns.barplot(
+            x="question_id", y="views", data=data_most_views, orient="v",
+            order=data_most_views.sort_values("views", ascending=False).question_id,
+            ax=axes[1,0]
+            ).set(title="Top 5 questions with most views")
+
+        # Top 5 questions with most votes
+        data_most_votes = self.data_parsed_df\
+            .sort_values("votes", ascending=False).head(5)
+        sns.barplot(
+            x="question_id", y="votes", data=data_most_votes, orient="v",
+            order=data_most_votes.sort_values("votes", ascending=False).question_id,
+            ax=axes[1,1]).set(title="Top 5 questions with most votes")
+        
+        plt.show()
+
         logger.info('Program finished.')
 
 

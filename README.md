@@ -24,7 +24,7 @@ In order to be able to see the output of this project, it is required to follow 
 
 1. Clone the project
 2. Install the requirements.txt
-3. Run the project
+3. Run the main file
 
 
 ## Troubleshooting

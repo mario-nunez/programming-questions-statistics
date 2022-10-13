@@ -1,7 +1,7 @@
 import os
 
 # Configuration settings
-WORKERS = 1
+WORKERS = 4
 REQUEST_LIMIT = 3
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)

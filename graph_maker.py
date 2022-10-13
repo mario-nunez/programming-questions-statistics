@@ -17,7 +17,7 @@ class GraphMaker:
         # Top 5 questions with most views
         data_most_views = data_parsed_df\
             .sort_values("views", ascending=False).head(5)
-        ax1 = sns\
+        sns\
             .barplot(x="question_id", y="views", data=data_most_views,
                      orient="v", ax=axes[0,0], order=data_most_views\
                         .sort_values("views", ascending=False).question_id)\
@@ -52,9 +52,5 @@ class GraphMaker:
                         .sort_values("votes", ascending=False).question_id)\
             .set(title="Number of answers of the top 5 questions with most votes",
                  xlabel="Question ID", ylabel="Number of answers")
-
-        fig2, axes = plt.subplots(nrows=2, ncols=2, figsize=(11,9))
-        fig2.subplots_adjust(hspace=0.3, wspace=0.3)
-        fig2.suptitle('Other visualizations', fontsize=20)
-        
+       
         plt.show()

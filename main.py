@@ -14,7 +14,7 @@ from gui import Gui
 from transform import Parser
 from settings.logging_config import LOG_CONFIG_DICT
 from settings.constants import (
-    URL_TEMPLATE, PAGE_TEMPLATE, WORKERS, STATUS_CODE_OK, REQUEST_LIMIT
+    URL_TEMPLATE, PAGE_TEMPLATE, WORKERS, REQUEST_LIMIT
 )
 
 
@@ -28,9 +28,9 @@ class MainClass:
     def __init__(self):
         self.task_queue = queue.Queue()
         self.data_parsed_df = pd.DataFrame()
-        self.parsers = []
         self.scraper = Collector(self.task_queue)
         self.graph_maker = GraphMaker()
+        self.parsers = []
         self._create_parser_workers(WORKERS)
 
     def stop(self):
@@ -39,11 +39,13 @@ class MainClass:
         """
         logger.info('Stopping parsers...')
 
-        self.task_queue.put(None) 
+        self.task_queue.put(None)
+        dfs = []
         for p in self.parsers:
             p.join()
-            # Store results in pandas dataframe in main class
-            self.data_parsed_df = pd.DataFrame.from_records(p.data_parsed)
+            dfs.append(pd.DataFrame.from_records(p.data_parsed))
+
+        self.data_parsed_df = pd.concat(dfs)
 
         logger.info(
             f'Task queue length: {self.task_queue.qsize()} -> '
@@ -97,8 +99,6 @@ class MainClass:
         """
         Main function
         """
-        logger.info(f'Starting program...')
-
         # Ask the user to select the search parameters
         lang, prog_lang = self.select_search_parameters()
         if lang is None and prog_lang is None:
@@ -141,6 +141,7 @@ class MainClass:
 if __name__ == "__main__":
     s = MainClass()
     try:
+        logger.info(f'Starting program...')
         s.main()
     except KeyboardInterrupt:
         logger.warning('Ctrl-c was pressed. Keyboard interruption ocurred.')

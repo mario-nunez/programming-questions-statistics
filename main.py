@@ -5,18 +5,16 @@ import platform
 import queue
 from time import perf_counter, process_time
 
-import aiohttp
 from bs4 import BeautifulSoup
-import matplotlib.pyplot as plt
 import pandas as pd
-import seaborn as sns
 
+from collector import Collector
+from graph_maker import GraphMaker
 from gui import Gui
-from transform import Parser
-from extract import Collector
+from data_parser import Parser
 from settings.logging_config import LOG_CONFIG_DICT
 from settings.constants import (
-    URL_TEMPLATE, PAGE_TEMPLATE, WORKERS, STATUS_CODE_OK, REQUEST_LIMIT
+    URL_TEMPLATE, PAGE_TEMPLATE, WORKERS, REQUEST_LIMIT
 )
 
 
@@ -29,24 +27,26 @@ class MainClass:
 
     def __init__(self):
         self.task_queue = queue.Queue()
-        self.data_parsed_df = None
+        self.data_parsed_df = pd.DataFrame()
+        self.scraper = Collector(self.task_queue)
+        self.graph_maker = GraphMaker()
         self.parsers = []
-        self.scraper = Collector()
-        self._create_parser_workers(WORKERS)
 
     def stop(self):
         """
-        Do cleanup actions before stopping the program
+        Stop parsers
         """
-        logger.info('Stopping program...')
+        logger.info('Stopping parsers...')
 
-        self.task_queue.put(None) 
+        self.task_queue.put(None)
+        dfs = []
         for p in self.parsers:
             p.join()
-            # Store results in pandas dataframe in main class
-            self.data_parsed_df = pd.DataFrame.from_records(p.data_parsed)
+            dfs.append(pd.DataFrame.from_records(p.data_parsed))
 
-        logger.info(
+        self.data_parsed_df = pd.concat(dfs)
+
+        logger.debug(
             f'Task queue length: {self.task_queue.qsize()} -> '
             f'last item: {self.task_queue.get()}'
         )
@@ -61,33 +61,6 @@ class MainClass:
 
         for t in self.parsers:
             t.start()
-
-    async def fetch(self, session, url):
-        """
-        Async function that makes a request and returns its html response.
-        """
-        async with session.get(url) as resp:
-            if resp.status != STATUS_CODE_OK:
-                logger.error(
-                    f'Error in response with status code: {resp.status}. '
-                    f'{resp.reason}')
-                return None
-            return await resp.text()
-
-    async def get_pages_info(self, base_url, pages_num):
-        """
-        Async function that gets the information of certain urls and 
-        insert them in the parser queue.
-        """
-        print(f'Requests made of the {pages_num}:')
-        async with aiohttp.ClientSession() as session:
-            for i in range(1, pages_num+1):
-                url = base_url + PAGE_TEMPLATE.format(page=i)
-                html_resp = await self.fetch(session, url)
-                if html_resp is None:
-                    return None
-                print(f'{i},', end="", flush=True)
-                self.task_queue.put(BeautifulSoup(html_resp, 'html.parser'))
 
     def get_pages_num(self, base_url):
         """
@@ -125,14 +98,13 @@ class MainClass:
         """
         Main function
         """
-        logger.info(f'Starting program...')
-
-        # Ask the user to select the search parameters
         lang, prog_lang = self.select_search_parameters()
         if lang is None and prog_lang is None:
             logger.warning('No search parameters selected')
             self.stop()
             return None
+
+        self._create_parser_workers(WORKERS)
 
         base_url = URL_TEMPLATE.format(lang=lang, prog_lang=prog_lang)
 
@@ -150,7 +122,7 @@ class MainClass:
 
         if platform.system()=='Windows':
             asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-        asyncio.run(self.get_pages_info(base_url, pages_num))
+        asyncio.run(self.scraper.get_pages_info(base_url, pages_num))
 
         self.stop()
 
@@ -160,62 +132,18 @@ class MainClass:
         logger.info(f'Wall time: {stop_time - start_time} seconds')
         logger.info(f'CPU time: {cpu_stop_time - cpu_start_time} seconds')
 
-        # Visualise results with seaborn
-
-        sns.set(rc={"figure.figsize":(13, 9)})
-        
-        #set seaborn plotting aesthetics as default
-        
-
-        #define plotting region (2 rows, 2 columns)
-        fig, axes = plt.subplots(2, 2)
-        fig.suptitle('Stackoverflow visualizations')
-
-        #create boxplot in each subplot
-
-        # Top 5 questions with most views
-        data_most_views = self.data_parsed_df\
-            .sort_values("views", ascending=False).head(5)
-        sns.barplot(
-            x="question_id", y="views", data=data_most_views, orient="v",
-            order=data_most_views.sort_values("views", ascending=False).question_id,
-            ax=axes[0,0]
-            ).set(title="Top 5 questions with most views")
-
-        # Top 5 questions with most votes
-        data_most_votes = self.data_parsed_df\
-            .sort_values("votes", ascending=False).head(5)
-        sns.barplot(
-            x="question_id", y="votes", data=data_most_votes, orient="v",
-            order=data_most_votes.sort_values("votes", ascending=False).question_id,
-            ax=axes[0,1]).set(title="Top 5 questions with most votes")
-
-        # Top 5 questions with most views
-        data_most_views = self.data_parsed_df\
-            .sort_values("views", ascending=False).head(5)
-        sns.barplot(
-            x="question_id", y="views", data=data_most_views, orient="v",
-            order=data_most_views.sort_values("views", ascending=False).question_id,
-            ax=axes[1,0]
-            ).set(title="Top 5 questions with most views")
-
-        # Top 5 questions with most votes
-        data_most_votes = self.data_parsed_df\
-            .sort_values("votes", ascending=False).head(5)
-        sns.barplot(
-            x="question_id", y="votes", data=data_most_votes, orient="v",
-            order=data_most_votes.sort_values("votes", ascending=False).question_id,
-            ax=axes[1,1]).set(title="Top 5 questions with most votes")
-        
-        plt.show()
-
-        logger.info('Program finished.')
+        if self.data_parsed_df.empty:
+            logger.info('No data to display')
+        else:
+            self.graph_maker.create_graphs(self.data_parsed_df)
 
 
 if __name__ == "__main__":
     s = MainClass()
     try:
+        logger.info(f'Starting program...')
         s.main()
     except KeyboardInterrupt:
-        logger.warning('Ctrl-c was pressed. Keyboard interruption ocurred.')
+        logger.warning('Ctrl-c was pressed. Keyboard interruption ocurred')
         s.stop()
+    logger.info('Program finished\n')

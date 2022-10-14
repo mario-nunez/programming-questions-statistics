@@ -51,7 +51,10 @@ class Parser(threading.Thread):
             
         logger.info(f'{self.name} ended')
 
-        logger.info(f'Summary: {len(self.data_parsed)} elements processed')
+        logger.info(
+            f'Summary: {len(self.data_parsed)} elements processed '
+            f'by {self.name}'
+        )
 
     # Data source: Stackoverflow web page
     def parse_html_response(self, html_response):
@@ -108,7 +111,7 @@ class Parser(threading.Thread):
             logger.error(e.__class__.__name__ + ':', e)
             logger.warning(
                 'Please report to the project owner.'
-                'The HTML structure of Stack Overflow may have changed.'
+                'The HTML structure of Stack Overflow may have changed'
             )
             data_error = True
 

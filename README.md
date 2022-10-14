@@ -4,17 +4,17 @@
 
 # Programming questions statistics
 
-The main goal of this project is to access Stack Overflow, extract meaningful information about programming questions, store the data obtained and display meaningful statistics in a user-friendly way.
+The main goal of this project is to access Stack Overflow, extract meaningful information about programming questions, store the data obtained and display some statistics in a user-friendly way.
 
-The software allows users to choose a programming language to obtain questions and answers about that topic.
+The software allows users to choose a programming language and a language to obtain questions and answers about that topic.
 
 
 ## Areas involved
 
 - Interactive GUI
 - Web scraping
-- Data cleaning
-- Data storage
+- Queues and multithreading
+- Data parsing
 - Data visualization
 
 
@@ -24,14 +24,5 @@ In order to be able to see the output of this project, it is required to follow 
 
 1. Clone the project
 2. Install the requirements.txt
-3. Run the project
-
-
-## Troubleshooting
-
-In this section there are presented different problems that users may encounter while executing this project.
-
-
-## Documentation
-
-The official documentation is available in the `doc` folder of the project.
+3. Check configuration variables in `settings/constants.py`
+4. Run the `main.py` file

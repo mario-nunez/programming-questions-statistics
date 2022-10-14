@@ -4,6 +4,7 @@ import logging.handlers
 
 from settings.constants import LOG_FOLDER
 
+
 LOG_LEVEL = logging.INFO
 
 LOG_CONFIG_DICT = {

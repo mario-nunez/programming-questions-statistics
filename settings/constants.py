@@ -1,8 +1,8 @@
 import os
 
-# Configuration settings
+# Configuration variables
 WORKERS = 4
-REQUEST_LIMIT = 3
+REQUEST_LIMIT = 50
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

@@ -8,10 +8,10 @@ from time import perf_counter, process_time
 from bs4 import BeautifulSoup
 import pandas as pd
 
-from extract import Collector
+from collector import Collector
 from graph_maker import GraphMaker
 from gui import Gui
-from transform import Parser
+from data_parser import Parser
 from settings.logging_config import LOG_CONFIG_DICT
 from settings.constants import (
     URL_TEMPLATE, PAGE_TEMPLATE, WORKERS, REQUEST_LIMIT
@@ -31,7 +31,6 @@ class MainClass:
         self.scraper = Collector(self.task_queue)
         self.graph_maker = GraphMaker()
         self.parsers = []
-        self._create_parser_workers(WORKERS)
 
     def stop(self):
         """
@@ -47,7 +46,7 @@ class MainClass:
 
         self.data_parsed_df = pd.concat(dfs)
 
-        logger.info(
+        logger.debug(
             f'Task queue length: {self.task_queue.qsize()} -> '
             f'last item: {self.task_queue.get()}'
         )
@@ -99,12 +98,13 @@ class MainClass:
         """
         Main function
         """
-        # Ask the user to select the search parameters
         lang, prog_lang = self.select_search_parameters()
         if lang is None and prog_lang is None:
             logger.warning('No search parameters selected')
             self.stop()
             return None
+
+        self._create_parser_workers(WORKERS)
 
         base_url = URL_TEMPLATE.format(lang=lang, prog_lang=prog_lang)
 
@@ -135,7 +135,7 @@ class MainClass:
         if self.data_parsed_df.empty:
             logger.info('No data to display')
         else:
-            self.graph_maker.create_graphs('stackoverflow', self.data_parsed_df)
+            self.graph_maker.create_graphs(self.data_parsed_df)
 
 
 if __name__ == "__main__":
@@ -144,6 +144,6 @@ if __name__ == "__main__":
         logger.info(f'Starting program...')
         s.main()
     except KeyboardInterrupt:
-        logger.warning('Ctrl-c was pressed. Keyboard interruption ocurred.')
+        logger.warning('Ctrl-c was pressed. Keyboard interruption ocurred')
         s.stop()
-    logger.info('Program finished.')
+    logger.info('Program finished\n')
